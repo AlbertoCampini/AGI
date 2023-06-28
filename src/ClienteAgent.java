@@ -2,6 +2,10 @@ import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.Behaviour;
 import jade.core.behaviours.CyclicBehaviour;
+import jade.domain.DFService;
+import jade.domain.FIPAAgentManagement.DFAgentDescription;
+import jade.domain.FIPAAgentManagement.ServiceDescription;
+import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 
 import java.util.ArrayList;
@@ -11,24 +15,33 @@ import java.util.Random;
 
 public class ClienteAgent extends Agent {
     Random random = new Random();
-    List<String> menu = new ArrayList<String>(Arrays.asList("Pasta al pomodoro", "Pizza", "Patatine"));
+    List<String> menu = new ArrayList<>(Arrays.asList("Pasta al pomodoro", "Pizza", "Patatine"));
+
     protected void setup() {
-        System.out.println("Agente Cliente " + getAID().getLocalName()  + " pronto.");
+        System.out.println("Agente Cliente " + getAID().getLocalName() + " pronto.");
 
         addBehaviour(new ComportamentoOrdinazione());
     }
 
+
     private class ComportamentoOrdinazione extends Behaviour {
         public void action() {
-            // Effettua l'ordinazione
+            //Cerco un cameriere libero
+            List<String> camerieri = Common.searchCameriere(getAgent());
+            String cameriere = camerieri.get(random.nextInt(camerieri.size()));
+
+            // Scelgo dal menu cosa voglio
             String piatto = menu.get(random.nextInt(menu.size()));
-            System.out.println("Cliente " + getAID().getLocalName()  + " ha ordinato ["+piatto+"]");
+
+
+            //Effettuo l'ordinazione verso un cameriere disponibile
+            System.out.println("Cliente " + getAID().getLocalName() + " ha ordinato [" + piatto + "]");
             ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
-            msg.setContent(getAID().getLocalName() +":"+piatto); // Esempio di ordinazione
-            msg.addReceiver(new AID("cameriere1", AID.ISLOCALNAME)); // Indirizzo dell'agente cameriere
+            msg.setContent(getAID().getLocalName() + ":" + piatto); // Esempio di ordinazione
+            msg.addReceiver(new AID(cameriere, AID.ISLOCALNAME)); // Indirizzo dell'agente cameriere scelto
             send(msg);
 
-            //Aggiungo un comportamento ciclico per aspettare il piatto dal cameriere
+            //Aggiungo un comportamento ciclico per aspettare il piatto dal cameriere per mangiarlo
             addBehaviour(new ComportamentoAspettarePiatto());
         }
 
@@ -44,12 +57,18 @@ public class ClienteAgent extends Agent {
             if (msg != null) {
                 String piatto = msg.getContent();
 
-                System.out.println("[Terminato] Cliente " + getAID().getLocalName()  + ": Ordine ricevuto - [" + piatto +"] ");
+                System.out.println("Cliente " + getAID().getLocalName() + ": Ordine ricevuto - [" + piatto + "] ");
 
+                takeDown();
             } else {
                 block();
             }
         }
     }
 
+    @Override
+    protected void takeDown() {
+        super.takeDown();
+        System.out.println("[TERMINATO] Cliente " + getAID().getLocalName());
+    }
 }
